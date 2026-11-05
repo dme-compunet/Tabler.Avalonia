@@ -1,9 +1,9 @@
 namespace Tabler.Avalonia;
 
 /// <summary>
-/// Markup extension for using an icon as content: <c>Content="{TablerIconContent Home}"</c>.
+/// Markup extension for using an icon as content: <c>Content="{TablerIcon Home}"</c>.
 /// </summary>
-public class TablerIconContentExtension : MarkupExtension
+public class TablerIconExtension : MarkupExtension
 {
     public TablerIconKind Kind { get; set; }
 
@@ -11,17 +11,17 @@ public class TablerIconContentExtension : MarkupExtension
 
     public double? StrokeWidth { get; set; }
 
-    public TablerIconContentExtension() { }
+    public TablerIconExtension() { }
 
-    public TablerIconContentExtension(TablerIconKind kind) => Kind = kind;
+    public TablerIconExtension(TablerIconKind kind) => Kind = kind;
 
-    public TablerIconContentExtension(TablerIconKind kind, double size)
+    public TablerIconExtension(TablerIconKind kind, double size)
     {
         Kind = kind;
         Size = size;
     }
 
-    public TablerIconContentExtension(TablerIconKind kind, double size, double strokeWidth)
+    public TablerIconExtension(TablerIconKind kind, double size, double strokeWidth)
     {
         Kind = kind;
         Size = size;

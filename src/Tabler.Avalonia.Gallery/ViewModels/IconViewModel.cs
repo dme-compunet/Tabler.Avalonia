@@ -21,5 +21,5 @@ public sealed partial class IconViewModel(TablerIconKind kind, IIconCopyService 
     private Task CopyXamlAsync() => copyService.CopyAsync($"<TablerIcon Kind=\"{Kind}\"/>");
 
     [RelayCommand]
-    private Task CopyExtensionAsync() => copyService.CopyAsync($"{{TablerIconContent {Kind}}}");
+    private Task CopyExtensionAsync() => copyService.CopyAsync($"{{TablerIcon {Kind}}}");
 }

@@ -99,7 +99,7 @@
 					<TextBlock Classes="Caption"
 							   Text="{Binding CountText, TargetNullValue=''}"
 							   TextWrapping="Wrap"/>
-					<Button Content="{TablerIconContent SunMoon, StrokeWidth=1.5}"
+					<Button Content="{TablerIcon SunMoon, StrokeWidth=1.5}"
 							Classes="Icon"
 							Cursor="Hand"
 							HorizontalAlignment="Left"
@@ -152,13 +152,13 @@
 											<ContextMenu>
 												<MenuItem Header="Copy icon name"
 														  Command="{Binding CopyNameCommand}"
-														  Icon="{TablerIconContent Copy}"/>
+														  Icon="{TablerIcon Copy}"/>
 												<MenuItem Header="Copy xaml element"
 														  Command="{Binding CopyXamlCommand}"
-														  Icon="{TablerIconContent Code}"/>
+														  Icon="{TablerIcon Code}"/>
 												<MenuItem Header="Copy content extension"
 														  Command="{Binding CopyExtensionCommand}"
-														  Icon="{TablerIconContent Braces}"/>
+														  Icon="{TablerIcon Braces}"/>
 											</ContextMenu>
 										</suki:GlassCard.ContextMenu>
 
