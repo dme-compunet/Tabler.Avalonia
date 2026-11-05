@@ -5,6 +5,15 @@
 		<IconGeneratorProject>$([System.IO.Path]::GetFullPath($(MSBuildProjectDirectory)\..\tools\Generator.Icons))</IconGeneratorProject>
 	</PropertyGroup>
 
+	<!-- The binary format is defined by code (IconPathCodec.cs is shared by the generator and the
+	     runtime decoder), so regenerate whenever the generator sources change as well. -->
+	<ItemGroup>
+		<IconGeneratorInput Include="$(IconInputFile)" />
+		<IconGeneratorInput Include="$(IconGeneratorProject)\**\*.cs;$(IconGeneratorProject)\*.csproj"
+		                    Exclude="$(IconGeneratorProject)\bin\**;$(IconGeneratorProject)\obj\**" />
+		<IconGeneratorInput Include="$(MSBuildProjectDirectory)\IconPathCodec.cs" />
+	</ItemGroup>
+
 	<!-- On a clean checkout TablerIconKind.g.cs doesn't exist at evaluation time,
 	     so (re)add it to Compile after generation. -->
 	<Target Name="IncludeGeneratedIconKind" AfterTargets="GenerateIcons">
@@ -16,7 +25,7 @@
 
 	<Target Name="GenerateIcons"
 			BeforeTargets="BeforeBuild"
-			Inputs="$(IconInputFile)"
+			Inputs="@(IconGeneratorInput)"
 			Outputs="
 			  $(MSBuildProjectDirectory)\Resources\icons.bin;
 			  $(MSBuildProjectDirectory)\Resources\metadata.bin;

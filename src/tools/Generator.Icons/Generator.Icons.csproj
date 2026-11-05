@@ -8,6 +8,11 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<!-- Shared with the runtime decoder so both sides always use the same format. -->
+		<Compile Include="..\..\Tabler.Avalonia\IconPathCodec.cs" Link="Shared\IconPathCodec.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="SvgToXaml.Converter" Version="11.2.0" />
 	</ItemGroup>
 

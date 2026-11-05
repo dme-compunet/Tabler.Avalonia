@@ -5,9 +5,28 @@ namespace Tabler.Avalonia;
 internal static class IconGeometryProvider
 {
     private static readonly ConcurrentDictionary<TablerIconKind, TablerIconGeometry> _cache = [];
-    private static readonly Lazy<TablerIconData[]> _data = new(Initialize);
+    private static readonly Lazy<IconPathCodec.IconPathTable> _table = new(Initialize);
+    private static readonly TablerIconData?[] _data = new TablerIconData?[Enum.GetValues<TablerIconKind>().Length];
 
-    public static TablerIconData GetData(TablerIconKind icon) => _data.Value[(int)icon];
+    public static TablerIconData GetData(TablerIconKind icon)
+    {
+        var index = (int)icon;
+
+        if ((uint)index >= (uint)_data.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(icon), icon, "Unknown icon.");
+        }
+
+        if (Volatile.Read(ref _data[index]) is { } data)
+        {
+            return data;
+        }
+
+        // Icons are decoded on demand, so only the compact binary stays in memory.
+        var (stroke, fills) = _table.Value.Decode(index);
+
+        return Interlocked.CompareExchange(ref _data[index], new TablerIconData(stroke, fills), null) ?? _data[index]!;
+    }
 
     public static TablerIconGeometry GetGeometry(TablerIconKind icon) =>
         _cache.GetOrAdd(icon, static kind =>
@@ -20,32 +39,25 @@ internal static class IconGeometryProvider
             return new TablerIconGeometry(stroke, fills);
         });
 
-    private static TablerIconData[] Initialize()
+    private static IconPathCodec.IconPathTable Initialize()
     {
         using var stream = EmbeddedResource.Open("icons.bin");
-        using var reader = new BinaryReader(stream);
+        using var buffer = new MemoryStream();
 
         try
         {
-            var count = Enum.GetValues<TablerIconKind>().Length;
-            var result = new TablerIconData[count];
+            stream.CopyTo(buffer);
 
-            for (var index = 0; index < count; index++)
+            var table = IconPathCodec.Open(buffer.ToArray());
+
+            if (table.Count != _data.Length)
             {
-                var stroke = reader.ReadString();
-                var fills = new string[reader.ReadInt32()];
-
-                for (var i = 0; i < fills.Length; i++)
-                {
-                    fills[i] = reader.ReadString();
-                }
-
-                result[index] = new TablerIconData(stroke, fills);
+                throw new InvalidDataException($"Expected {_data.Length} icons but found {table.Count}.");
             }
 
-            return result;
+            return table;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not InvalidDataException)
         {
             throw new InvalidDataException("The icon binary file is corrupted or in an invalid format.", ex);
         }

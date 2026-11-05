@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using Tabler.Avalonia;
 
 namespace Generator.Icons;
 
@@ -39,20 +40,33 @@ public class BuildCommand
     {
         var targetPath = Path.Combine(OutputPath, "Resources", "icons.bin");
 
-        using var writer = CreateWriter(targetPath);
+        var source = Array.ConvertAll(icons, icon => (icon.Stroke, icon.Fills));
+        var encoded = IconPathCodec.Encode(source);
 
-        foreach (var icon in icons)
+        // The encoding must be lossless: decode it back and compare with the source.
+        var table = IconPathCodec.Open(encoded);
+
+        if (table.Count != source.Length)
         {
-            writer.Write(icon.Stroke);
-            writer.Write(icon.Fills.Length);
+            throw new InvalidOperationException($"Encoded {table.Count} icons instead of {source.Length}.");
+        }
 
-            foreach (var fill in icon.Fills)
+        for (var i = 0; i < source.Length; i++)
+        {
+            var decoded = table.Decode(i);
+
+            if (decoded.Stroke != source[i].Stroke || !decoded.Fills.SequenceEqual(source[i].Fills))
             {
-                writer.Write(fill);
+                throw new InvalidOperationException($"Icon '{icons[i].Name}' does not round-trip through the binary encoding.");
             }
         }
 
-        Console.WriteLine($"Icons written to {targetPath}.");
+        using (var stream = new BrotliStream(File.Create(targetPath), CompressionLevel.SmallestSize))
+        {
+            stream.Write(encoded);
+        }
+
+        Console.WriteLine($"Icons written to {targetPath} ({encoded.Length:N0} bytes encoded, {new FileInfo(targetPath).Length:N0} bytes compressed).");
     }
 
     private void WriteBinaryMetadata(TablerIconInfo[] icons)
