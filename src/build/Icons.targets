@@ -1,0 +1,29 @@
+<Project>
+
+	<PropertyGroup>
+		<IconInputFile>$([System.IO.Path]::GetFullPath($(MSBuildProjectDirectory)\..\..\icons\tabler-icons.txt))</IconInputFile>
+		<IconGeneratorProject>$([System.IO.Path]::GetFullPath($(MSBuildProjectDirectory)\..\tools\Generator.Icons))</IconGeneratorProject>
+	</PropertyGroup>
+
+	<!-- On a clean checkout TablerIconKind.g.cs doesn't exist at evaluation time,
+	     so (re)add it to Compile after generation. -->
+	<Target Name="IncludeGeneratedIconKind" AfterTargets="GenerateIcons">
+		<ItemGroup>
+			<Compile Remove="TablerIconKind.g.cs" />
+			<Compile Include="TablerIconKind.g.cs" />
+		</ItemGroup>
+	</Target>
+
+	<Target Name="GenerateIcons"
+			BeforeTargets="BeforeBuild"
+			Inputs="$(IconInputFile)"
+			Outputs="
+			  $(MSBuildProjectDirectory)\Resources\icons.bin;
+			  $(MSBuildProjectDirectory)\Resources\metadata.bin;
+			  $(MSBuildProjectDirectory)\TablerIconKind.g.cs">
+
+		<Message Importance="high" Text="Generating compact icon binaries from $(IconInputFile)..." />
+
+		<Exec Command="dotnet run --project &quot;$(IconGeneratorProject)&quot; -- build &quot;$(IconInputFile)&quot; &quot;$(MSBuildProjectDirectory)&quot;" />
+	</Target>
+</Project>

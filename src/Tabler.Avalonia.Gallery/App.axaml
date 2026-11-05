@@ -1,0 +1,10 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:suki="using:SukiUI"
+             x:Class="Tabler.Avalonia.Gallery.App"
+             RequestedThemeVariant="Default">
+
+    <Application.Styles>
+        <suki:SukiTheme ThemeColor="Blue" />
+    </Application.Styles>
+</Application>

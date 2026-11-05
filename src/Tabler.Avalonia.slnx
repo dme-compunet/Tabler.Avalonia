@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/Build/">
+    <File Path="build/Icons.targets" />
+  </Folder>
+  <Folder Name="/Generators/">
+    <Project Path="tools/Generator.Icons/Generator.Icons.csproj" />
+  </Folder>
+  <Project Path="Tabler.Avalonia.Gallery/Tabler.Avalonia.Gallery.csproj" />
+  <Project Path="Tabler.Avalonia/Tabler.Avalonia.csproj" />
+</Solution>

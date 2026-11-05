@@ -1,0 +1,13 @@
+global using Avalonia;
+global using Avalonia.Controls;
+global using Avalonia.Controls.ApplicationLifetimes;
+global using Avalonia.Markup.Xaml;
+global using CommunityToolkit.Mvvm.ComponentModel;
+global using CommunityToolkit.Mvvm.Input;
+global using Microsoft.Extensions.DependencyInjection;
+global using SukiUI;
+global using SukiUI.Controls;
+global using SukiUI.Toasts;
+global using Tabler.Avalonia.Gallery.Services;
+global using Tabler.Avalonia.Gallery.ViewModels;
+global using Tabler.Avalonia.Gallery.Views;

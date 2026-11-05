@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IsAotCompatible>true</IsAotCompatible>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<Description>Implementation of the Tabler icon library for AvaloniaUI</Description>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageTags>csharp avalonia-ui icons tabler</PackageTags>
+		<Version>0.1.0-preview</Version>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="Resources\icons.bin" />
+		<EmbeddedResource Include="Resources\metadata.bin" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Avalonia" Version="11.3.17" />
+	</ItemGroup>
+
+	<Import Project="../build/Icons.targets" />
+
+</Project>

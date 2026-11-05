@@ -1,0 +1,180 @@
+<suki:SukiWindow xmlns="https://github.com/avaloniaui"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:vm="using:Tabler.Avalonia.Gallery.ViewModels"
+                 xmlns:behaviors="using:Tabler.Avalonia.Gallery.Behaviors"
+                 xmlns:suki="using:SukiUI.Controls"
+                 xmlns:theme="using:SukiUI.Theme"
+                 mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="650"
+                 x:Class="Tabler.Avalonia.Gallery.Views.MainWindow"
+                 x:DataType="vm:MainWindowViewModel"
+                 BackgroundStyle="GradientDarker"
+                 MinWidth="520"
+                 MinHeight="420"
+                 Width="1100"
+                 Height="720"
+                 Title="Tabler Icons - Gallery">
+
+	<suki:SukiWindow.LogoContent>
+		<TablerIcon Kind="BrandTabler"
+					Size="18"
+					Margin="0 0 0 2"
+					Foreground="{DynamicResource SukiPrimaryColor}"/>
+	</suki:SukiWindow.LogoContent>
+
+	<suki:SukiWindow.Hosts>
+		<suki:SukiToastHost x:Name="ToastHost"/>
+	</suki:SukiWindow.Hosts>
+
+	<suki:SukiWindow.Styles>
+		<Style Selector="TextBlock.SectionLabel">
+			<Setter Property="FontWeight" Value="SemiBold"/>
+		</Style>
+		<Style Selector="suki|GlassCard.IconTile">
+			<Setter Property="Margin" Value="6"/>
+			<Setter Property="Padding" Value="10"/>
+			<Setter Property="CornerRadius" Value="8"/>
+			<Setter Property="Cursor" Value="Hand"/>
+			<Setter Property="IsAnimated" Value="False"/>
+		</Style>
+		<Style Selector="ContextMenu TablerIcon">
+			<Setter Property="Size" Value="16"/>
+			<Setter Property="StrokeWidth" Value="2"/>
+		</Style>
+	</suki:SukiWindow.Styles>
+
+	<Grid Margin="20" ColumnDefinitions="200 20 *">
+
+		<!-- Customizer -->
+		<suki:GlassCard Grid.Column="0">
+
+			<DockPanel LastChildFill="False">
+
+				<StackPanel Spacing="20" DockPanel.Dock="Top">
+
+					<TextBlock FontSize="20" FontWeight="SemiBold" Text="Customizer"/>
+
+					<StackPanel Spacing="8">
+						<TextBlock Classes="SectionLabel" Text="Variant:"/>
+						<ComboBox ItemsSource="{Binding Variants}"
+								  SelectedItem="{Binding SelectedVariant}"
+								  HorizontalAlignment="Stretch"/>
+					</StackPanel>
+
+					<DockPanel>
+						<Slider DockPanel.Dock="Bottom"
+								Margin="-8 8"
+								Minimum="14"
+								Maximum="48"
+								TickFrequency="1"
+								IsSnapToTickEnabled="True"
+								Value="{Binding IconSize}"/>
+						<TextBlock Classes="Caption" DockPanel.Dock="Right"
+								   Text="{Binding IconSize, StringFormat='{}{0} px'}"/>
+						<TextBlock Classes="SectionLabel" Text="Size:" DockPanel.Dock="Left"/>
+					</DockPanel>
+
+					<DockPanel>
+						<Slider DockPanel.Dock="Bottom"
+								Margin="-8 8"
+								Minimum="0.5"
+								Maximum="3.0"
+								TickFrequency="0.05"
+								IsSnapToTickEnabled="True"
+								Value="{Binding StrokeWidth}"/>
+						<TextBlock Classes="Caption" DockPanel.Dock="Right"
+								   Text="{Binding StrokeWidth, StringFormat='{}{0:0.##} px'}"/>
+						<TextBlock Classes="SectionLabel" Text="Stroke width:" DockPanel.Dock="Left"/>
+					</DockPanel>
+
+					<Button Content="Reset"
+							Classes="Basic"
+							Cursor="Hand"
+							Command="{Binding ResetCommand}"/>
+
+				</StackPanel>
+
+				<StackPanel DockPanel.Dock="Bottom" Spacing="10">
+					<TextBlock Classes="Caption"
+							   Text="{Binding CountText, TargetNullValue=''}"
+							   TextWrapping="Wrap"/>
+					<Button Content="{TablerIconContent SunMoon, StrokeWidth=1.5}"
+							Classes="Icon"
+							Cursor="Hand"
+							HorizontalAlignment="Left"
+							ToolTip.Tip="Toggle light / dark theme"
+							Command="{Binding ToggleThemeCommand}"/>
+				</StackPanel>
+
+			</DockPanel>
+
+		</suki:GlassCard>
+
+		<!-- Icon grid -->
+		<suki:GlassCard Grid.Column="2">
+
+			<DockPanel>
+
+				<TextBox DockPanel.Dock="Top"
+						 Padding="6 8 8 6"
+						 PlaceholderText="Search icons by name, category or tag..."
+						 Text="{Binding SearchText}"
+						 theme:TextBoxExtensions.AddDeleteButton="True">
+					<TextBox.InnerLeftContent>
+						<TablerIcon Kind="Search" Size="16" Margin="8 0 0 0" Opacity=".6"/>
+					</TextBox.InnerLeftContent>
+				</TextBox>
+
+				<suki:BusyArea BusyText="Loading..." IsBusy="{Binding IsBusy}">
+
+					<ScrollViewer Margin="0 20 0 0"
+								  behaviors:ScrollViewerAssist.ScrollToTopOnChange="{Binding Icons}">
+
+						<!-- Virtualized grid: Tabler has ~6,300 icons, too many for a plain WrapPanel. -->
+						<!-- ItemChrome = tile padding (2 x 10) + margin (2 x 6). -->
+						<ItemsRepeater ItemsSource="{Binding Icons}"
+									   behaviors:UniformGridAssist.ItemChrome="32"
+									   behaviors:UniformGridAssist.ItemSize="{Binding IconSize}">
+							<ItemsRepeater.Layout>
+								<UniformGridLayout Orientation="Horizontal"/>
+							</ItemsRepeater.Layout>
+							<ItemsRepeater.ItemTemplate>
+								<DataTemplate x:DataType="vm:IconViewModel">
+									<suki:GlassCard Classes="IconTile" ToolTip.Tip="{Binding Tip}">
+
+										<!-- Size / stroke come from the window's view model, not from each item. -->
+										<TablerIcon Kind="{Binding Kind}"
+													Size="{Binding $parent[ItemsRepeater].((vm:MainWindowViewModel)DataContext).IconSize, FallbackValue=24}"
+													StrokeWidth="{Binding $parent[ItemsRepeater].((vm:MainWindowViewModel)DataContext).StrokeWidth, FallbackValue=2}"/>
+
+										<suki:GlassCard.ContextMenu>
+											<ContextMenu>
+												<MenuItem Header="Copy icon name"
+														  Command="{Binding CopyNameCommand}"
+														  Icon="{TablerIconContent Copy}"/>
+												<MenuItem Header="Copy xaml element"
+														  Command="{Binding CopyXamlCommand}"
+														  Icon="{TablerIconContent Code}"/>
+												<MenuItem Header="Copy content extension"
+														  Command="{Binding CopyExtensionCommand}"
+														  Icon="{TablerIconContent Braces}"/>
+											</ContextMenu>
+										</suki:GlassCard.ContextMenu>
+
+									</suki:GlassCard>
+								</DataTemplate>
+							</ItemsRepeater.ItemTemplate>
+						</ItemsRepeater>
+
+					</ScrollViewer>
+
+				</suki:BusyArea>
+
+			</DockPanel>
+
+		</suki:GlassCard>
+
+	</Grid>
+
+</suki:SukiWindow>
