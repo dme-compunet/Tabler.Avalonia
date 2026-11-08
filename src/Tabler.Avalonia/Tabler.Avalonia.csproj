@@ -11,8 +11,13 @@
 		<Description>Implementation of the Tabler icon library for AvaloniaUI</Description>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageTags>csharp avalonia-ui icons tabler</PackageTags>
+		<PackageIcon>icon.png</PackageIcon>
 		<Version>0.1.0-preview</Version>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" Visible="false" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<EmbeddedResource Include="Resources\icons.bin" />

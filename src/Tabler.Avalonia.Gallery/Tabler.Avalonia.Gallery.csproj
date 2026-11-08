@@ -7,7 +7,14 @@
 		<LangVersion>preview</LangVersion>
 		<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<ApplicationIcon>..\..\assets\logo.ico</ApplicationIcon>
+		<PublishAot>true</PublishAot>
+		<InvariantGlobalization>true</InvariantGlobalization>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<AvaloniaResource Include="..\..\assets\logo.ico" Link="Assets\logo.ico" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Avalonia" Version="12.1.5" />

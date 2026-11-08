@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" width="96" alt="Tabler logo" />
+</p>
+
 # Tabler.Avalonia (feasibility draft)
 
 [Tabler Icons](https://tabler.io/icons) for AvaloniaUI, modeled on Lucide.Avalonia.
@@ -22,6 +26,7 @@ var data = TablerIconKind.Home.GetData();     // raw stroke / fill path data
 ## Layout
 
 ```
+assets/                         official Tabler logo (svg) + rendered icon.png (NuGet) / logo.ico (gallery)
 icons/tabler-icons.txt          generated source of truth (geometry + metadata)
 src/tools/Generator.Icons       SVG -> path data converter
 src/build/Icons.targets         turns the .txt into embedded .bin + TablerIconKind.g.cs at build time
