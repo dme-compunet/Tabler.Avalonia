@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      # Builds the library (which regenerates the icon binaries and enum from icons/tabler-icons.txt),
+      # the gallery and the generator.
+      - name: Build
+        run: dotnet build src/Tabler.Avalonia.slnx -c Release
+
+      - name: Check generated enum is committed
+        shell: bash
+        run: |
+          if ! git diff --exit-code -- src/Tabler.Avalonia/TablerIconKind.g.cs; then
+            echo "::error file=src/Tabler.Avalonia/TablerIconKind.g.cs::TablerIconKind.g.cs is out of date with icons/tabler-icons.txt. Build locally and commit it."
+            exit 1
+          fi
+
+  pack:
+    name: Pack
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Pack
+        run: dotnet pack src/Tabler.Avalonia/Tabler.Avalonia.csproj -c Release -o artifacts -p:Version=0.0.0-ci.${{ github.run_number }}
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: artifacts/*
+          if-no-files-found: error

@@ -1,15 +1,20 @@
 using System.IO.Compression;
+using System.Text;
 using Tabler.Avalonia;
 
 namespace Generator.Icons;
 
 /// <summary>
-/// Builds compact Brotli-compressed binary resources and the TablerIconKind enum
-/// from the source text file (prepares assets for the Tabler.Avalonia build).
+/// Builds the compact Brotli-compressed binary resources and the TablerIconKind enum
+/// from the icons text file (runs as part of the Tabler.Avalonia build).
 /// </summary>
-public class BuildCommand
+/// <remarks>
+/// Both binaries are indexed by icon id. Ids of removed icons stay as empty slots,
+/// so a value compiled into older code renders nothing instead of a different icon.
+/// </remarks>
+public sealed class BuildCommand
 {
-    /// <summary>Path to the source text file containing icon definitions.</summary>
+    /// <summary>Path to the icons text file.</summary>
     public required string InputPath { get; init; }
 
     /// <summary>Path to the Tabler.Avalonia project directory.</summary>
@@ -17,30 +22,35 @@ public class BuildCommand
 
     public void Execute()
     {
-        Console.WriteLine("Starting build task...");
+        Console.WriteLine("Building icon resources...");
 
         if (!Directory.Exists(OutputPath))
         {
             throw new DirectoryNotFoundException($"The directory '{OutputPath}' does not exist.");
         }
 
-        var icons = TablerIconInfo.ReadArrayFromFile(InputPath);
+        var catalog = IconCatalog.Read(InputPath);
+
+        // Slot i holds the icon with id i (null for removed ids).
+        var slots = new TablerIconInfo?[catalog.Icons.Length == 0 ? 0 : catalog.Icons[^1].Id + 1];
+
+        foreach (var icon in catalog.Icons)
+        {
+            slots[icon.Id] = icon;
+        }
 
         Directory.CreateDirectory(Path.Combine(OutputPath, "Resources"));
 
-        WriteBinaryIcons(icons);
-        WriteBinaryMetadata(icons);
-        WriteIconEnumCsSource(icons);
+        WriteBinaryIcons(slots);
+        WriteBinaryMetadata(slots);
+        WriteIconEnumCsSource(catalog, slots.Length);
     }
 
-    private static BinaryWriter CreateWriter(string path) =>
-        new(new BrotliStream(File.Create(path), CompressionLevel.SmallestSize));
-
-    private void WriteBinaryIcons(TablerIconInfo[] icons)
+    private void WriteBinaryIcons(TablerIconInfo?[] slots)
     {
         var targetPath = Path.Combine(OutputPath, "Resources", "icons.bin");
 
-        var source = Array.ConvertAll(icons, icon => (icon.Stroke, icon.Fills));
+        var source = Array.ConvertAll(slots, icon => (icon?.Stroke ?? "", icon?.Fills ?? []));
         var encoded = IconPathCodec.Encode(source);
 
         // The encoding must be lossless: decode it back and compare with the source.
@@ -55,9 +65,9 @@ public class BuildCommand
         {
             var decoded = table.Decode(i);
 
-            if (decoded.Stroke != source[i].Stroke || !decoded.Fills.SequenceEqual(source[i].Fills))
+            if (decoded.Stroke != source[i].Item1 || !decoded.Fills.SequenceEqual(source[i].Item2))
             {
-                throw new InvalidOperationException($"Icon '{icons[i].Name}' does not round-trip through the binary encoding.");
+                throw new InvalidOperationException($"Icon '{slots[i]?.KindName}' does not round-trip through the binary encoding.");
             }
         }
 
@@ -69,43 +79,62 @@ public class BuildCommand
         Console.WriteLine($"Icons written to {targetPath} ({encoded.Length:N0} bytes encoded, {new FileInfo(targetPath).Length:N0} bytes compressed).");
     }
 
-    private void WriteBinaryMetadata(TablerIconInfo[] icons)
+    private void WriteBinaryMetadata(TablerIconInfo?[] slots)
     {
         var targetPath = Path.Combine(OutputPath, "Resources", "metadata.bin");
 
-        using var writer = CreateWriter(targetPath);
+        using var writer = new BinaryWriter(new BrotliStream(File.Create(targetPath), CompressionLevel.SmallestSize));
 
-        foreach (var icon in icons)
+        writer.Write(slots.Length);
+
+        foreach (var icon in slots)
         {
-            writer.Write(icon.Name);
-            writer.Write(icon.Variant == "filled");
-            writer.Write(icon.Category);
-            writer.Write(string.Join(',', icon.Tags));
+            // An empty name marks a removed id.
+            writer.Write(icon?.Name ?? "");
+            writer.Write(icon?.IsFilled ?? false);
+            writer.Write(icon?.Category ?? "");
+            writer.Write(icon is null ? "" : string.Join(',', icon.Tags));
         }
 
         Console.WriteLine($"Metadata written to {targetPath}.");
     }
 
-    private void WriteIconEnumCsSource(TablerIconInfo[] icons)
+    private void WriteIconEnumCsSource(IconCatalog catalog, int capacity)
     {
         var targetPath = Path.Combine(OutputPath, "TablerIconKind.g.cs");
 
-        using var writer = new StreamWriter(File.Create(targetPath));
+        var sb = new StringBuilder();
 
-        writer.WriteLine("// <auto-generated />");
-        writer.WriteLine();
-        writer.WriteLine("namespace Tabler.Avalonia;");
-        writer.WriteLine();
-        writer.WriteLine("public enum TablerIconKind");
-        writer.WriteLine("{");
+        sb.Append("// <auto-generated />\n");
+        sb.Append($"// Generated from {catalog.Source} by Generator.Icons. Do not edit by hand.\n");
+        sb.Append('\n');
+        sb.Append("namespace Tabler.Avalonia;\n");
+        sb.Append('\n');
+        sb.Append("/// <summary>\n");
+        sb.Append("/// All Tabler icons. Outline icons use the Tabler name in PascalCase, filled icons add a <c>Filled</c> suffix.\n");
+        sb.Append("/// </summary>\n");
+        sb.Append("/// <remarks>\n");
+        sb.Append("/// Values are stable across versions: an icon keeps its value forever and values of removed icons are never reused.\n");
+        sb.Append("/// </remarks>\n");
+        sb.Append("public enum TablerIconKind\n");
+        sb.Append("{\n");
 
-        foreach (var icon in icons)
+        foreach (var icon in catalog.Icons)
         {
-            writer.WriteLine($"    {icon.KindName},");
+            sb.Append($"    {icon.KindName} = {icon.Id},\n");
         }
 
-        writer.WriteLine("}");
+        sb.Append("}\n");
+        sb.Append('\n');
+        sb.Append("internal static class TablerIconKindInfo\n");
+        sb.Append("{\n");
+        sb.Append("    /// <summary>Highest icon value + 1 (the number of slots in the embedded binaries).</summary>\n");
+        sb.Append($"    public const int Capacity = {capacity};\n");
+        sb.Append("}\n");
 
-        Console.WriteLine($"{targetPath} written ({icons.Length} members).");
+        // Always written (even when unchanged) so the build target's outputs are newer than its inputs.
+        File.WriteAllText(targetPath, sb.ToString(), new UTF8Encoding(false));
+
+        Console.WriteLine($"{targetPath} written ({catalog.Icons.Length} members).");
     }
 }

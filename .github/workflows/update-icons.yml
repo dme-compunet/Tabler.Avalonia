@@ -1,0 +1,133 @@
+name: Update icons
+
+# Checks tabler-icons for a new release every week. When the icons changed it commits the
+# regenerated files, tags the next version and starts release.yml for that tag.
+# The version bump follows the change: removed icons -> major (minor while 0.x),
+# added icons -> minor, changed drawings or search tags only -> patch.
+
+on:
+  schedule:
+    - cron: "0 5 * * 1" # Mondays, 05:00 UTC
+  workflow_dispatch:
+    inputs:
+      version:
+        description: tabler-icons release tag (e.g. v3.51.0). Empty = latest release.
+        required: false
+        default: ""
+      force:
+        description: Regenerate even if the icons are already at this release
+        type: boolean
+        default: false
+      release:
+        description: Tag and publish a release when the icons changed
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-icons
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  GENERATOR: src/tools/Generator.Icons
+  ICONS: icons/tabler-icons.txt
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # push the commit and the tag
+      actions: write # start release.yml (pushes made with GITHUB_TOKEN don't trigger workflows)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # tags, to find the current version
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Download and generate icons
+        id: update
+        run: |
+          args=(update "$ICONS")
+          [ -n "$VERSION" ] && args+=(--version "$VERSION")
+          [ "$FORCE" = true ] && args+=(--force)
+          dotnet run --project "$GENERATOR" -c Release -- "${args[@]}"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          FORCE: ${{ inputs.force }}
+
+      - name: Build library
+        if: steps.update.outputs.updated == 'true'
+        run: dotnet build src/Tabler.Avalonia/Tabler.Avalonia.csproj -c Release
+
+      - name: Summarize changes
+        id: changes
+        if: steps.update.outputs.updated == 'true'
+        run: |
+          # The latest stable version (prerelease tags are skipped).
+          current=$(git describe --tags --abbrev=0 --match 'v*.*.*' --exclude '*-*' 2>/dev/null || true)
+          git show "HEAD:$ICONS" > "$RUNNER_TEMP/previous-icons.txt"
+          dotnet run --project "$GENERATOR" -c Release --no-build -- changes "$RUNNER_TEMP/previous-icons.txt" "$ICONS" \
+            --current-version "$current" --markdown "$RUNNER_TEMP/changes.md"
+          {
+            echo "## Tabler Icons ${{ steps.update.outputs.previous-version }} → ${{ steps.update.outputs.version }}"
+            echo
+            cat "$RUNNER_TEMP/changes.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit, tag and start release
+        if: steps.update.outputs.updated == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          git add "$ICONS" src/Tabler.Avalonia/TablerIconKind.g.cs
+
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+
+          git commit -m "Update Tabler Icons to $TABLER_VERSION" \
+                     -m "Added: $ADDED, modified: $MODIFIED, removed: $REMOVED"
+
+          refs=("HEAD:refs/heads/$BRANCH")
+          tag=""
+
+          if [ "$RELEASE" != false ] && [ "$HAS_CHANGES" = true ]; then
+            if [ -n "$NEXT_VERSION" ]; then
+              tag="v$NEXT_VERSION"
+              git tag -a "$tag" -m "$tag: Tabler Icons $TABLER_VERSION"
+              refs+=("refs/tags/$tag")
+            else
+              echo "::notice::No version tag exists yet, so no release was created. Push the first tag (e.g. v0.1.0) manually."
+            fi
+          fi
+
+          # Atomic: the commit and the tag land together or not at all.
+          git push --atomic origin "${refs[@]}"
+
+          if [ -n "$tag" ]; then
+            gh workflow run release.yml --ref "$tag"
+            echo "::notice::Released $tag (Tabler Icons $TABLER_VERSION)."
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
+          RELEASE: ${{ inputs.release }} # empty on schedule = release
+          TABLER_VERSION: ${{ steps.update.outputs.version }}
+          HAS_CHANGES: ${{ steps.changes.outputs.has-changes }}
+          NEXT_VERSION: ${{ steps.changes.outputs.next-version }}
+          ADDED: ${{ steps.changes.outputs.added }}
+          MODIFIED: ${{ steps.changes.outputs.modified }}
+          REMOVED: ${{ steps.changes.outputs.removed }}

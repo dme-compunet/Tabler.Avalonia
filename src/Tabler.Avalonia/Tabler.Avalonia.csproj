@@ -5,18 +5,40 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<IsAotCompatible>true</IsAotCompatible>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<!-- Public API docs are welcome but not required for every member (e.g. the 6,000+ enum values). -->
+		<NoWarn>$(NoWarn);CS1591</NoWarn>
 	</PropertyGroup>
 
 	<PropertyGroup>
-		<Description>Implementation of the Tabler icon library for AvaloniaUI</Description>
+		<PackageId>Tabler.Avalonia</PackageId>
+		<!-- Local builds only; CI packs with -p:Version from the release tag. -->
+		<Version>0.1.0-dev</Version>
+		<Authors>Compunet</Authors>
+		<Copyright>Copyright (c) Compunet</Copyright>
+		<Description>Tabler Icons (6,000+ outline and filled icons) for AvaloniaUI: a lightweight control and markup extension with embedded, compact icon data. Updated automatically from new Tabler Icons releases.</Description>
+		<PackageTags>avalonia avaloniaui icons tabler tabler-icons svg-icons</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<PackageTags>csharp avalonia-ui icons tabler</PackageTags>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageIcon>icon.png</PackageIcon>
-		<Version>0.1.0-preview</Version>
+		<PackageProjectUrl>https://github.com/dme-compunet/Tabler.Avalonia</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/dme-compunet/Tabler.Avalonia</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageReleaseNotes>https://github.com/dme-compunet/Tabler.Avalonia/releases</PackageReleaseNotes>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" Visible="false" />
+		<None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
+		<None Include="..\..\LICENSE" Pack="true" PackagePath="\" Visible="false" />
+		<None Include="..\..\THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="\" Visible="false" />
 	</ItemGroup>
 
 	<ItemGroup>

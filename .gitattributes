@@ -1,0 +1,10 @@
+* text=auto
+
+# Generated files are always written with LF; keep them LF everywhere so a regeneration
+# on any OS produces no line-ending noise.
+icons/*.txt          text eol=lf
+*.g.cs               text eol=lf
+
+*.png                binary
+*.ico                binary
+*.bin                binary

@@ -6,7 +6,9 @@ internal static class IconGeometryProvider
 {
     private static readonly ConcurrentDictionary<TablerIconKind, TablerIconGeometry> _cache = [];
     private static readonly Lazy<IconPathCodec.IconPathTable> _table = new(Initialize);
-    private static readonly TablerIconData?[] _data = new TablerIconData?[Enum.GetValues<TablerIconKind>().Length];
+    // Indexed by enum value. Values of removed icons decode to empty data, so code compiled
+    // against an older version of the package renders nothing instead of a wrong icon.
+    private static readonly TablerIconData?[] _data = new TablerIconData?[TablerIconKindInfo.Capacity];
 
     public static TablerIconData GetData(TablerIconKind icon)
     {

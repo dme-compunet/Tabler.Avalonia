@@ -1,0 +1,160 @@
+name: Release
+
+# The only workflow that publishes to nuget.org. It uses NuGet Trusted Publishing (OIDC),
+# so the trusted publishing policy on nuget.org must name this file: release.yml.
+#
+# Runs for a pushed version tag (git tag v1.2.3 && git push origin v1.2.3), or when update-icons.yml
+# starts it for the tag it created (tags pushed with GITHUB_TOKEN don't trigger workflows):
+#   gh workflow run release.yml --ref v1.2.3
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  PROJECT: src/Tabler.Avalonia/Tabler.Avalonia.csproj
+
+jobs:
+  publish:
+    name: Publish package
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment: release
+
+    permissions:
+      contents: write # create the GitHub release
+      id-token: write # OIDC token for NuGet Trusted Publishing
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # the previous tag, for the release notes
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Resolve version
+        id: version
+        run: |
+          version="${TAG#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag '$TAG' is not a version tag (expected vX.Y.Z or vX.Y.Z-suffix)."
+            exit 1
+          fi
+          previous=$(git describe --tags --abbrev=0 --match 'v*.*.*' "$TAG^" 2>/dev/null || true)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "previous=$previous" >> "$GITHUB_OUTPUT"
+          echo "Version $version, previous tag: ${previous:-none}"
+
+      # Icon changes since the previous release, put in front of GitHub's generated notes (PRs, contributors).
+      - name: Icon changes
+        run: |
+          old=-
+          if [ -n "$PREVIOUS" ] && git cat-file -e "$PREVIOUS:icons/tabler-icons.txt" 2>/dev/null; then
+            git show "$PREVIOUS:icons/tabler-icons.txt" > "$RUNNER_TEMP/previous-icons.txt"
+            old="$RUNNER_TEMP/previous-icons.txt"
+          fi
+          dotnet run --project src/tools/Generator.Icons -c Release -- changes "$old" icons/tabler-icons.txt --markdown "$RUNNER_TEMP/icon-changes.md"
+        env:
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+
+      - name: Pack
+        run: dotnet pack "$PROJECT" -c Release -o artifacts -p:Version="${{ steps.version.outputs.version }}"
+
+      # Exchanges the GitHub OIDC token for a short-lived (1 hour) NuGet API key.
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to NuGet
+        run: dotnet nuget push "artifacts/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+
+      - name: Create GitHub release
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG already exists; updating its assets."
+            gh release upload "$TAG" artifacts/* --clobber
+            exit 0
+          fi
+
+          # --notes-file is prepended to the notes GitHub generates (--generate-notes).
+          args=(--title "$TAG" --notes-file "$RUNNER_TEMP/icon-changes.md" --generate-notes --verify-tag)
+          [ -n "$PREVIOUS" ] && args+=(--notes-start-tag "$PREVIOUS")
+          [[ "$TAG" == *-* ]] && args+=(--prerelease)
+
+          gh release create "$TAG" artifacts/* "${args[@]}"
+        env:
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+
+  gallery:
+    name: Gallery (${{ matrix.rid }})
+    needs: publish
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: osx-arm64
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: write # upload release assets
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish (NativeAOT)
+        run: dotnet publish src/Tabler.Avalonia.Gallery/Tabler.Avalonia.Gallery.csproj -c Release -r ${{ matrix.rid }} -o publish -p:Version=${{ needs.publish.outputs.version }}
+
+      - name: Archive
+        id: archive
+        shell: bash
+        run: |
+          rm -rf publish/*.pdb publish/*.dbg publish/*.dSYM
+          name="tabler-icons-gallery-${{ matrix.rid }}"
+          if [ "$RUNNER_OS" = Windows ]; then
+            7z a "$name.zip" ./publish/*
+            echo "file=$name.zip" >> "$GITHUB_OUTPUT"
+          else
+            tar -C publish -czf "$name.tar.gz" .
+            echo "file=$name.tar.gz" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload to release
+        shell: bash
+        run: gh release upload "${{ github.ref_name }}" "${{ steps.archive.outputs.file }}" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
