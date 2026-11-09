@@ -72,8 +72,6 @@ Versions follow [SemVer](https://semver.org), with `TablerIconKind` as the publi
 | Icons added | minor |
 | Drawings or search tags changed only | patch |
 
-Release notes list the added, modified and removed icons, followed by the merged pull requests.
-
 Enum values are assigned once and never reused. Code compiled against an older version (for example
 a library you depend on) keeps showing the same icons after an update. If an icon was removed, its old
 value renders nothing instead of a different icon.
