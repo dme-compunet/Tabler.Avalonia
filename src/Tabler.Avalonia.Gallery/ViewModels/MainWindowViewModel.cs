@@ -10,7 +10,7 @@ public enum IconVariantFilter
 public sealed partial class MainWindowViewModel : ObservableObject
 {
     public const double DefaultSize = 24;
-    public const double DefaultStrokeWidth = 2;
+    public const double DefaultStrokeWidth = 1.8;
 
     private static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(300);
 
