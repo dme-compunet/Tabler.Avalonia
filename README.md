@@ -41,6 +41,16 @@ dotnet add package Tabler.Avalonia
 
 `Size` defaults to 24 and `StrokeWidth` to 1.8. `Foreground` is inherited, like text.
 
+### Right-to-left layouts
+
+Icons are not mirrored when `FlowDirection` is `RightToLeft`. Most icons should look the same in any
+language. Set `IsFlippable` on directional icons, such as arrows, that should follow the layout direction:
+
+```xml
+<TablerIcon Kind="ArrowRight" IsFlippable="True" />
+<Button Content="{TablerIcon ChevronLeft, IsFlippable=True}" />
+```
+
 ### The markup extension
 
 ```xml

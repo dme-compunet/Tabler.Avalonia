@@ -11,6 +11,8 @@ public class TablerIconExtension : MarkupExtension
 
     public double? StrokeWidth { get; set; }
 
+    public bool? IsFlippable { get; set; }
+
     public TablerIconExtension() { }
 
     public TablerIconExtension(TablerIconKind kind) => Kind = kind;
@@ -40,6 +42,11 @@ public class TablerIconExtension : MarkupExtension
         if (StrokeWidth.HasValue)
         {
             icon.StrokeWidth = StrokeWidth.Value;
+        }
+
+        if (IsFlippable.HasValue)
+        {
+            icon.IsFlippable = IsFlippable.Value;
         }
 
         return icon;

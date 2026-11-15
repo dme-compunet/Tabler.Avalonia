@@ -20,6 +20,12 @@ public class TablerIcon : Control
     public static readonly StyledProperty<TablerIconKind?> KindProperty =
         AvaloniaProperty.Register<TablerIcon, TablerIconKind?>(nameof(Kind));
 
+    /// <summary>
+    /// Defines the <see cref="IsFlippable"/> property.
+    /// </summary>
+    public static readonly StyledProperty<bool> IsFlippableProperty =
+        AvaloniaProperty.Register<TablerIcon, bool>(nameof(IsFlippable));
+
     private Pen? _pen;
     private TablerIconGeometry? _geometry;
 
@@ -47,6 +53,21 @@ public class TablerIcon : Control
         set => SetValue(KindProperty, value);
     }
 
+    /// <summary>
+    /// Gets or sets whether the icon is mirrored when <see cref="Visual.FlowDirection"/> is
+    /// <see cref="FlowDirection.RightToLeft"/>. Defaults to <see langword="false"/>: icons keep their
+    /// original drawing in RTL layouts. Set it to <see langword="true"/> for directional icons such as arrows.
+    /// </summary>
+    public bool IsFlippable
+    {
+        get => GetValue(IsFlippableProperty);
+        set => SetValue(IsFlippableProperty, value);
+    }
+
+    // When not flippable, opt out of RTL mirroring: Avalonia then applies a counter-mirror that cancels
+    // the mirroring inherited from the RTL parent, so the icon is drawn left-to-right.
+    protected override bool BypassFlowDirectionPolicies => !IsFlippable;
+
     static TablerIcon()
     {
         AffectsRender<TablerIcon>(KindProperty, SizeProperty, ForegroundProperty, StrokeWidthProperty);
@@ -63,6 +84,10 @@ public class TablerIcon : Control
         else if (change.Property == ForegroundProperty || change.Property == StrokeWidthProperty)
         {
             _pen = null;
+        }
+        else if (change.Property == IsFlippableProperty)
+        {
+            InvalidateMirrorTransform();
         }
 
         base.OnPropertyChanged(change);
